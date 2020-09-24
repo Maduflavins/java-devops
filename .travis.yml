@@ -1,7 +1,83 @@
-language: java
-jdk: oraclejdk8
-install: true
-script: mvn clean install -DskipTests=true -Dmaven.javadoc.skip=true -B -V
-cache:
-  directories:
-  - $HOME/.m2
+#language: java
+#jdk: oraclejdk8
+#install: true
+#script: mvn clean install -DskipTests=true -Dmaven.javadoc.skip=true -B -V
+#cache:
+#  directories:
+#  - $HOME/.m2
+
+
+#orbs:
+#  heroku: circleci/heroku@0.0.10
+#
+#version: 2
+#jobs:
+#  build:
+#    directories:
+#      - $HOME/ .m2
+#    docker:
+#      - image: circleci/openjdk:8-jdk-stretch
+#      - image: circleci/postgres:9.6.3-alpine
+#
+#      environment:
+#        POSTGRES_USER: ${TEST_DB_USER}
+#        POSTGRES_DB: ${TEST_DB_NAME}
+#
+#    step:
+#      - checkout
+#      - restore_cache:
+#          key
+
+orbs:
+  heroku: circle/heroku@0.0.10
+
+  version: 2
+  jobs:
+    build:
+      working_directory: ~/spring-boot-rest-api-tutorial
+
+      docker:
+        - image: circleci/openjdk:8-jdk-stretch
+        - image: circleci/postgres:9.6.3-alpine
+        environment:
+          POSTGRES_USER: ${TEST_DB_USER}
+          POSTGRES_DB: ${TEST_DB_NAME}
+      steps:
+
+        - checkout
+        - restore_cache:
+            key: spring-boot-rest-api-tutorial-{{ checksum "pom.xml" }}
+        - run: mvn package
+        - store_test_results:
+            path: target/semicolon-reports
+        - store_artifacts:
+            path: target/spring-boot-rest-api-tutorial-0.0.1-SNAPSHOT.jar
+
+workflows:
+  heroku_deploy:
+    jobs:
+      - build
+      - heroku/deploy-via-git:
+          requires:
+            - build
+          filters:
+            branches:
+              only: development
+jobs:
+  build:
+    docker:
+      - image: circleci/openjdk:8-jdk-stretch
+      - image: circleci/postgres:9.4.12-alpine
+        environment:
+          POSTGRES_USER:  ${PROD_DB_USER}
+          POSTGRES_DB: ${PROD_DB_NAME}
+    working_directory: ~/spring-boot-rest-api-tutorial
+    steps:
+      - checkout
+      - run: mvn package
+      - run: cd target
+      - run:
+          name: start your application
+          command: java -jar spring-boot-rest-api-tutorial-0.0.1-SNAPSHOT.jar
+
+
