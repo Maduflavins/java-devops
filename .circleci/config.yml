@@ -31,7 +31,7 @@
 orbs:
   heroku: circle/heroku@0.0.10
 
-  version: 2
+  version: 2.1
   jobs:
     build:
       working_directory: ~/spring-boot-rest-api-tutorial
@@ -52,7 +52,7 @@ orbs:
             path: target/semicolon-reports
         - store_artifacts:
             path: target/spring-boot-rest-api-tutorial-0.0.1-SNAPSHOT.jar
-
+version: 2.1
 workflows:
   heroku_deploy:
     jobs:
