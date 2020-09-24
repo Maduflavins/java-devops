@@ -29,7 +29,7 @@
 #          key
 
 orbs:
-  heroku: circle/heroku@0.0.10
+  heroku: circle/heroku@1.2.2
   version: 2.1
   jobs:
     build:
