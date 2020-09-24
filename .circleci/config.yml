@@ -30,12 +30,10 @@
 
 orbs:
   heroku: circle/heroku@0.0.10
-
   version: 2.1
   jobs:
     build:
       working_directory: ~/spring-boot-rest-api-tutorial
-
       docker:
         - image: circleci/openjdk:8-jdk-stretch
         - image: circleci/postgres:9.6.3-alpine
@@ -43,7 +41,6 @@ orbs:
         POSTGRES_USER: ${TEST_DB_USER}
         POSTGRES_DB: ${TEST_DB_NAME}
       steps:
-
         - checkout
         - restore_cache:
             key: spring-boot-rest-api-tutorial-{{ checksum "pom.xml" }}
