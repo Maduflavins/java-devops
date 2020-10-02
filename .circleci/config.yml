@@ -13,7 +13,7 @@ jobs:
             POSTGRES_PASSWORD: ${TEST_DB_PASSWORD}
       environment:
         DATABASE_URL: "jdbc:postgresql://localhost:5432/postgres"
-        DATABASE_NAME: ${TEST_DB_NAME}
+        DATABASE_USERNAME: ${TEST_DB_USER}
         DATABASE_PASSWORD: ${TEST_DB_PASSWORD}
       steps:
         - checkout
