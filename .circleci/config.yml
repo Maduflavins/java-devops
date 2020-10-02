@@ -10,9 +10,8 @@ jobs:
           environment:
             POSTGRES_DB: postgres
             POSTGRES_USER: restapi
-            POSTGRES_PASSWORD: restapi
       environment:
-        DB_URL: "postgres://restapi:restapi@localhost:5432/postgres?sslmode=disable"
+        DATABASE_URL: "postgres://restapi@localhost:5432/postgres"
       steps:
         - checkout
         - restore_cache:
