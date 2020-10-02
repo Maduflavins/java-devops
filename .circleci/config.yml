@@ -1,101 +1,3 @@
-#version: 2
-#jobs:
-#  build:
-#    docker:
-#      - image: circleci/openjdk:11.0.1-jdk
-#
-#    working_directory: ~/spring-boot-rest-api-tutorial
-#
-#    steps:
-#      # git pull
-#      - checkout
-#
-#      # setup testing env
-#      - setup_remote_docker:
-#          docker_layer_caching: true
-#      - run:
-#          name: Login to DockerHub
-#          command: docker login -u $DOCKER_USER -p $DOCKER_PASS
-#      - run:
-#          name: Decrpyt Secrets
-#          command: openssl enc -d -aes-256-ecb -md md5 -in src/main/resources/application-prod.properties.secrets -out src/main/resources/application-prod.properties -k $SECRETS_KEY
-#
-#      # Download and cache dependencies
-#      - restore_cache:
-#          keys:
-#            - spring-boot-rest-api-tutorial-{{ checksum "pom.xml" }}
-#
-#      - run: mvn dependency:go-offline
-#
-#      - save_cache:
-#          paths:
-#            - ~/.m2
-#          key: spring-boot-rest-api-tutorial-{{ checksum "pom.xml" }}
-#
-#      # package into a jar
-#      - run: mvn clean package
-#
-#      # build and push docker image to docker hub
-#      - run: mvn clean compile jib:build -Dimage=maduflavins/springboot-api:$CIRCLE_BUILD_NUM
-#
-#      # store raw contents of src code
-#      - store_artifacts:
-#          path: target/classes
-#          destination: simple-boot-rest-api-tutorial
-#
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-##language: java
-##jdk: oraclejdk8
-##install: true
-##script: mvn clean install -DskipTests=true -Dmaven.javadoc.skip=true -B -V
-##cache:
-##  directories:
-##  - $HOME/.m2
-#
-#
-##orbs:
-##  heroku: circleci/heroku@0.0.10
-##
-##version: 2
-##jobs:
-##  build:
-##    directories:
-##      - $HOME/ .m2
-##    docker:
-##      - image: circleci/openjdk:8-jdk-stretch
-##      - image: circleci/postgres:9.6.3-alpine
-##
-##      environment:
-##        POSTGRES_USER: ${TEST_DB_USER}
-##        POSTGRES_DB: ${TEST_DB_NAME}
-##
-##    step:
-##      - checkout
-##      - restore_cache:
-##          key
-##
 orbs:
   heroku: circleci/heroku@1.2.2
 version: 2.1
@@ -123,76 +25,30 @@ jobs:
             path: target/semicolon-reports
         - store_artifacts:
             path: target/spring-boot-rest-api-tutorial-0.0.1-SNAPSHOT.jar
-workflows:
-  heroku_deploy:
-    jobs:
-      - build
-      - heroku/deploy-via-git:
-          requires:
-            - build
-          filters:
-            branches:
-              only: development
-  jobs:
-  build:
+
+  production_build:
     docker:
-     - image: circleci/openjdk:8-jdk-stretch
-     - image: circleci/postgres:9.4.12-alpine
-       environment:
-        POSTGRES_USER:  ${PROD_DB_USER}
-        POSTGRES_DB: ${PROD_DB_NAME}
+      - image: circleci/openjdk:8-jdk-stretch
+      - image: circleci/postgres:9.4.12-alpine
+        environment:
+          POSTGRES_USER: ${PROD_DB_USER}
+          POSTGRES_DB: ${PROD_DB_NAME}
     working_directory: ~/spring-boot-rest-api-tutorial
     steps:
       - checkout
       - run: mvn package
       - run: cd target
       - run:
-         name: start your application
-         command: java -jar spring-boot-rest-api-tutorial-0.0.1-SNAPSHOT.jar
+          name: start your application
+          command: java -jar spring-boot-rest-api-tutorial-0.0.1-SNAPSHOT.jar
 
-
-
-#version: 2
-#jobs:
-#  build:
-#    docker:
-#      - image: circleci/openjdk:11.0.1-jdk
-#    working_directory: ~/spring-boot-rest-api-tutorial
-#
-#    steps:
-#      #git pull
-#      - checkout
-#      # setup testing env
-#      - setup_remote_docker:
-#          docker_layer_caching: true
-#      - run:
-#          name: Login to DockerHub
-#          command: docker login -u $DOCKER_USER -p $DOCKER_PASS
-#      - run:
-#          name: Decrpyt Secrets
-#          command: openssl enc -d -aes-256-ecb -md md5 -in src/main/resources/application-prod.properties.secrets -out src/main/resources/application-prod.properties - $SECRETS_KEY
-#
-#      #Download and cache dependencies
-#      - restore_cache:
-#          keys:
-#            - spring-boot-rest-api-tutorial-{{ checksum "pom.xml" }}
-#      - run: mvn dependency:go-offline
-#
-#      - save_cache:
-#          paths:
-#            - ~/.m2
-#          key: spring-boot-rest-api-tutorial-{{ checksum "pom.xml" }}
-#
-#      # package into a jar
-#      - run: mvn clean package
-#        # build and push docker image to docker hub
-#      - run: mvn clean compile jib:build -Dimage=zarinlo/springboot-api:$CIRCLE_BUILD_NUM
-#
-#      # store raw contents of src code
-#      - store_artifacts:
-#          path: target/classes
-#          destination: spring-boot-rest-api-tutorial
-#
-#
-#
-#
+workflows:
+  heroku_deploy:
+    jobs:
+      - production_build
+      - heroku/deploy-via-git:
+          requires:
+            - production_build
+          filters:
+            branches:
+              only: development
