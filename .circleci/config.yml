@@ -6,17 +6,18 @@ jobs:
       working_directory: ~/spring-boot-rest-api-tutorial
       docker:
         - image: circleci/openjdk:8-jdk-stretch
-        - image: circleci/postgres:9.6.3-alpine
-          environment:
-            POSTGRES_USER: ${TEST_DB_USER}
-            POSTGRES_DB: ${TEST_DB_NAME}
-            POSTGRES_PASSWORD: ${TEST_DB_PASSWORD}
+        - image: postgres:9.6
       environment:
         DB_URL: ${TEST_DB_URL}
         DB_USER: ${TEST_DB_USER}
         DB_PASSWORD: ${TEST_DB_PASSWORD}
       steps:
         - checkout
+        - run: apt-get update -qq && apt-get install -y postgresql
+        - run:
+            command: |
+             psql -h 127.0.0.1 -U postgres -c "CREATE DATABASE ${TEST_DB_NAME};"
+             psql -h 127.0.0.1 -U postgres -c "CREATE USER ${TEST_DB_USER} WITH PASSWORD '${TEST_DB_PASSWORD}'; GRANT ALL PRIVILEGES ON DATABASE ${TEST_DB_NAME} TO ${TEST_DB_USER};"
         - restore_cache:
             key: spring-boot-rest-api-tutorial-{{ checksum "pom.xml" }}
         - run: mvn package
