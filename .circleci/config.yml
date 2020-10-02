@@ -8,13 +8,9 @@ jobs:
         - image: circleci/openjdk:8-jdk-stretch
         - image: circleci/postgres:9.6.3-alpine
           environment:
-            POSTGRES_USER: ${PROD_DB_USER}
             POSTGRES_DB: ${PROD_DB_NAME}
-            POSTGRES_PASSWORD: ${PROD_DB_PASSWORD}
       environment:
         DB_URL: "jdbc:postgresql://localhost:5432/${PROD_DB_NAME}"
-        DB_USER: ${PROD_DB_USER}
-        DB_PASSWORD: ${PROD_DB_PASSWORD}
       steps:
         - checkout
         - restore_cache:
