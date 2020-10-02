@@ -11,7 +11,7 @@ jobs:
             POSTGRES_DB: postgres
             POSTGRES_USER: restapi
       environment:
-        DATABASE_URL: "jdbc:postgres://restapi@localhost:5432/postgres"
+        DATABASE_URL: "jdbc:postgresql://restapi@localhost:5432/postgres"
       steps:
         - checkout
         - restore_cache:
