@@ -21,9 +21,9 @@ jobs:
            name: start your application
            command: java -jar spring-boot-rest-api-tutorial-0.0.1-SNAPSHOT.jar
         - store_test_results:
-            path: cibuild/test-results
+            path: target/surefire-reports/com.staxrt.tutorial.ApplicationTests.txt
         - store_artifacts:
-            path: cibuild/test-results/spring-boot-rest-api-tutorial-0.0.1-SNAPSHOT.jar
+            path: target/spring-boot-rest-api-tutorial-0.0.1-SNAPSHOT.jar
 
   production_build:
     docker:
