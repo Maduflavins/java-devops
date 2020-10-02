@@ -8,11 +8,13 @@ jobs:
         - image: circleci/openjdk:8-jdk-stretch
         - image: circleci/postgres:9.6.3-alpine
           environment:
-            POSTGRES_DB: postgres
-            POSTGRES_USER: restapi
-            POSTGRES_PASSWORD: restapi
+            POSTGRES_DB: ${TEST_DB_NAME}
+            POSTGRES_USER: ${TEST_DB_USER}
+            POSTGRES_PASSWORD: ${TEST_DB_PASSWORD}
       environment:
-        DATABASE_URL: "jdbc:postgresql://localhost:5432/postgres"
+        DATABASE_URL: "jdbc:postgresql://localhost:5432/${TEST_DB_NAME}"
+        DATABASE_NAME: ${TEST_DB_NAME}
+        DATABASE_PASSWORD: ${TEST_DB_PASSWORD}
       steps:
         - checkout
         - restore_cache:
@@ -20,7 +22,7 @@ jobs:
         - run: mvn package
         - run:
            name: start your application
-           command: java -jar spring-boot-rest-api-tutorial-0.0.1-SNAPSHOT.jar
+           command: java -jar target/spring-boot-rest-api-tutorial-0.0.1-SNAPSHOT.jar
         - store_test_results:
             path: target/surefire-reports/com.staxrt.tutorial.ApplicationTests.txt
         - store_artifacts:
