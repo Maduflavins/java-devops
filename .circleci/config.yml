@@ -49,7 +49,7 @@ workflows:
       - production_build
       - heroku/deploy-via-git:
           requires:
-            - production_build
+            - build
           filters:
             branches:
               only: development
