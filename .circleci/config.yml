@@ -17,7 +17,9 @@ jobs:
         - restore_cache:
             key: spring-boot-rest-api-tutorial-{{ checksum "pom.xml" }}
         - run: mvn package
+        - run: mkdir target
         - run: cd target
+        - run: mkdir semicolon-reports
         - run:
            name: start your application
            command: java -jar spring-boot-rest-api-tutorial-0.0.1-SNAPSHOT.jar
