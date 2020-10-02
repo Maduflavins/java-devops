@@ -20,7 +20,7 @@ jobs:
         - restore_cache:
             key: spring-boot-rest-api-tutorial-{{ checksum "pom.xml" }}
         - run:
-           name: build and testing application
+           name: build and test application
            command: mvn package
         - store_test_results:
             path: target/surefire-reports/com.staxrt.tutorial.ApplicationTests.txt
@@ -52,7 +52,7 @@ workflows:
   heroku_deploy:
     jobs:
       - build
-#      - production_build
+      - production_build
       - heroku/deploy-via-git:
           requires:
             - build
