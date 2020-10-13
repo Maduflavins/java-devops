@@ -10,7 +10,7 @@ FROM openjdk:8-jdk-alpine
 FROM maven:alpine
 VOLUME /tmp
 COPY target/*.jar app.jar
-ENTRYPOINT ["java","-jar","app.jar"]
+ENTRYPOINT ["java","-jar","spring-boot-api-tutorial-0.0.1-SNAPSHOT.jar"]
 EXPOSE 8080
 
 
