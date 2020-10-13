@@ -42,6 +42,8 @@ jobs:
       DATABASE_PASSWORD: ${PROD_DB_PASSWORD}
     steps:
       - checkout
+      - setup_remote_docker:
+          version: 19.03.13
       - run:
           name: "build docker image"
           command: docker build --rm=false -t registry.heroku.com/${HEROKU_APP_NAME}/web .
