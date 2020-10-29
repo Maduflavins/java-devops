@@ -1,151 +1,73 @@
-// pipeline{
-// agent{ docker { image 'maven:3.3.3'}}
-// stages{
-//
-// stage("checkout project"){
-//     steps {
-//         echo 'checkouting project'
-//         checkout scm
-//
-//     }
-//
-// }
-// stage("check env"){
-//     steps{
-//         echo 'checking environment'
-//         sh "mvn -v"
-//         sh "java -version"
-//     }
-// }
-// stage("test"){
-// echo 'running test'
-// sh "mvn test"
-//
-// }
-// stage("deploy"){
-//     when{
-//         expression{
-//             BRANCH_NAME == "Master"
-//         }
-//     }
-//     step{
-//         echo 'deploying application'
-//         sh "mvn package"
-//     }
-// }
-// stage("report"){
-//     echo 'reporting...'
-//     step([$class: 'JunitResultArchiever', testResults: '**/target/surefire-reports/TEST-*.xml'])
-// }
-// stage("Artifact"){
-//     echo 'Artifact collecting...'
-//     step([$class: 'ArtifactArchiver', artifacts: '**/target/*.jar', fingerprint: true])
-//
-// }
-// }
-// }
+def CONTAINER_NAME="devops-projects"
+def CONTAINER_TAG="latest"
+def DOCKER_HUB_USER="Maduflavins"
+def HTTP_PORT="8090"
 
+node {
 
-// node {
-//     def app
-//
-//     stage('Clone repository') {
-//         /* Let's make sure we have the repository cloned to our workspace */
-//         echo 'cloning repository'
-//
-//         checkout scm
-//     }
-//
-//     stage('Build image') {
-//         /* This builds the actual image; synonymous to
-//          * docker build on the command line */
-//
-//         app = docker.build("maduflavins/devops")
-//     }
-//
-//     stage('Test image') {
-//         /* Ideally, we would run a test framework against our image.
-//          * This runs only a single dummy test inside the image. */
-//
-//         app.inside {
-//             sh 'mvn test'
-//         }
-//     }
-//
-//     stage('Push image') {
-//         /* Finally, we'll push the image with two tags:
-//          * First, the incremental build number from Jenkins
-//          * Second, the 'latest' tag.
-//          * Pushing multiple tags is cheap, as all the layers are reused. */
-//          echo 'Pushing repo'
-//          sh "./deploy.sh"
-// //         docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-credentials') {
-// //             app.push("${env.BUILD_NUMBER}")
-// //             app.push("latest")
-// //         }
-//     }
-// }
-//
-pipeline {
+    stage('Initialize'){
+        def dockerHome = tool 'myDocker'
+        def mavenHome  = tool 'myMaven'
+        env.PATH = "${dockerHome}/bin:${mavenHome}/bin:${env.PATH}"
+    }
 
-  agent any
-
-  environment {
-    git_commit_message = ''
-    git_commit_diff = ''
-    git_commit_author = ''
-    git_commit_author_name = ''
-    git_commit_author_email = ''
-  }
-
-  stages {
-
-    // Build
-    stage('Build') {
-      steps {
-        deleteDir()
+    stage('Checkout') {
         checkout scm
-      }
     }
 
-    // Static Code Analysis
-    stage('Static Code Analysis') {
-      steps {
-        deleteDir()
-        checkout scm
-        sh "echo 'Run Static Code Analysis'"
-      }
+    stage('Build'){
+        sh "mvn clean install"
     }
 
-    // Unit Tests
-    stage('Unit Tests') {
-      steps {
-        deleteDir()
-        checkout scm
-        sh "echo 'Run Unit Tests'"
-        sh "mvn test"
-      }
+    stage('Sonar'){
+        try {
+            sh "mvn sonar:sonar"
+        } catch(error){
+            echo "The sonar server could not be reached ${error}"
+        }
+     }
+
+    stage("Image Prune"){
+        imagePrune(CONTAINER_NAME)
     }
 
-    // Acceptance Tests
-    stage('Acceptance Tests') {
-      steps {
-        deleteDir()
-        checkout scm
-        sh "echo 'Running Acceptance Tests'"
-      }
+    stage('Image Build'){
+        imageBuild(CONTAINER_NAME, CONTAINER_TAG)
     }
 
-  }
-  post {
-    success {
-      sh "echo 'Send mail on success'"
-      // mail to:"me@example.com", subject:"SUCCESS: ${currentBuild.fullDisplayName}", body: "Yay, we passed."
+    stage('Push to Docker Registry'){
+        withCredentials([usernamePassword(credentialsId: 'dockerHubAccount', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+            pushToImage(CONTAINER_NAME, CONTAINER_TAG, USERNAME, PASSWORD)
+        }
     }
-    failure {
-      sh "echo 'Send mail on failure'"
-      // mail to:"me@example.com", subject:"FAILURE: ${currentBuild.fullDisplayName}", body: "Boo, we failed."
+
+    stage('Run App'){
+        runApp(CONTAINER_NAME, CONTAINER_TAG, DOCKER_HUB_USER, HTTP_PORT)
     }
-  }
+
 }
 
+def imagePrune(containerName){
+    try {
+        sh "docker image prune -f"
+        sh "docker stop $containerName"
+    } catch(error){}
+}
+
+def imageBuild(containerName, tag){
+    sh "docker build -t $containerName:$tag  -t $containerName --pull --no-cache ."
+    echo "Image build complete"
+}
+
+def pushToImage(containerName, tag, dockerUser, dockerPassword){
+    sh "docker login -u $dockerUser -p $dockerPassword"
+    sh "docker tag $containerName:$tag $dockerUser/$containerName:$tag"
+    sh "docker push $dockerUser/$containerName:$tag"
+    echo "Image push complete"
+}
+
+def runApp(containerName, tag, dockerHubUser, httpPort){
+    sh "docker pull $dockerHubUser/$containerName"
+    sh "docker run -d --rm -p $httpPort:$httpPort --name $containerName $dockerHubUser/$containerName:$tag"
+    echo "Application started on port: ${httpPort} (http)"
+}
