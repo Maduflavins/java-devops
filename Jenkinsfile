@@ -86,11 +86,6 @@
 //     }
 // }
 //
-//
-
-
-#!groovy
-
 pipeline {
 
   agent any
