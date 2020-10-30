@@ -1,23 +1,22 @@
-version: '3.2'
+
+version: '3'
+
 services:
-  sonarqube:
-    build:
-      context: sonarqube/
+  db:
+    image: "postgres"
     ports:
-      - 9000:9000
-      - 9092:9092
-    container_name: sonarqube
-  jenkins:
-    build:
-      context: jenkins/
-    privileged: true
-    user: root
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: tc
+      POSTGRES_USER: tc
+      POSTGRES_PASSWORD: tc
+  app:
+    build: .
     ports:
-      - 8080:8080
-      - 50000:50000
-    container_name: jenkins
-    volumes:
-      - /tmp/jenkins:/var/jenkins_home #Remember that, the tmp directory is designed to be wiped on system reboot.
-      - /var/run/docker.sock:/var/run/docker.sock
+      - "9000:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db/tc
+      SPRING_DATASOURCE_USERNAME: tc
+      SPRING_DATASOURCE_PASSWORD: tc
     depends_on:
-      - sonarqube
+      - db
