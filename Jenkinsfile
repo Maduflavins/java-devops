@@ -1,73 +1,108 @@
-def CONTAINER_NAME="devops-projects"
-def CONTAINER_TAG="latest"
-def DOCKER_HUB_USER="Maduflavins"
-def HTTP_PORT="8090"
+pipeline {
 
-node {
+  agent any
 
-    stage('Initialize'){
-        def dockerHome = tool 'myDocker'
-        def mavenHome  = tool 'myMaven'
-        env.PATH = "${dockerHome}/bin:${mavenHome}/bin:${env.PATH}"
-    }
+  environment {
+    RUN_UNIT_TESTS = 'false'
+    DEPLOY_ARTIFACT = 'false'
+    ARTIFACT_ID = readMavenPom().getArtifactId()
+    ARTIFACT_VERSION = readMavenPom().getVersion()
+  }
 
-    stage('Checkout') {
-        checkout scm
-    }
+  options {
+    buildDiscarder(logRotator(numToKeepStr: '10'))
+  }
 
-    stage('Build'){
-        sh "mvn clean install"
-    }
+  stages {
 
-    stage('Sonar'){
-        try {
-            sh "mvn sonar:sonar"
-        } catch(error){
-            echo "The sonar server could not be reached ${error}"
+    stage('Information') {
+      steps {
+        script {
+          def commit = sh(returnStdout: true, script: 'git --no-pager show -s --format=\'%h\'  origin/' + env.BRANCH_NAME).trim()
+          def author = sh(returnStdout: true, script: 'git --no-pager show -s --format=\'%an\' origin/' + env.BRANCH_NAME).trim()
+          def authorEmail = sh(returnStdout: true, script: 'git --no-pager show -s --format=\'%ae\' origin/' + env.BRANCH_NAME).trim()
+          def comment = sh(returnStdout: true, script: 'git --no-pager show -s --format=\'%B\' origin/' + env.BRANCH_NAME).trim()
+          echo """
+    Branch : ${env.BRANCH_NAME}
+    Author : ${author}
+    Email : ${authorEmail}
+    Commit : ${commit}
+    Comment : ${comment}
+    ArtifactId : ${ARTIFACT_ID}
+    Version : ${ARTIFACT_VERSION}
+          """
         }
-     }
-
-    stage("Image Prune"){
-        imagePrune(CONTAINER_NAME)
+      }
     }
 
-    stage('Image Build'){
-        imageBuild(CONTAINER_NAME, CONTAINER_TAG)
-    }
-
-    stage('Push to Docker Registry'){
-        withCredentials([usernamePassword(credentialsId: 'dockerHubAccount', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
-            pushToImage(CONTAINER_NAME, CONTAINER_TAG, USERNAME, PASSWORD)
+    stage('Build Package with Tests') {
+      when {
+        environment name: 'RUN_UNIT_TESTS', value: 'true'
+      }
+      agent {
+        docker {
+          image 'maven:3.5.4-jdk-8-alpine'
+          args '-v $HOME/.m2:/root/.m2'
         }
+      }
+      steps {
+        configFileProvider([configFile(fileId: 'maven-settings', variable: 'MAVEN_SETTINGS')]) {
+          sh 'mvn -B -s ${MAVEN_SETTINGS} clean package'
+        }
+      }
+    }
+    stage('Build Package Skip Tests') {
+      when {
+        not { environment name: 'RUN_UNIT_TESTS', value: 'true' }
+      }
+      agent {
+        docker {
+          image 'maven:3.5.4-jdk-8-alpine'
+          args '-v $HOME/.m2:/root/.m2'
+        }
+      }
+      steps {
+        configFileProvider([configFile(fileId: 'maven-settings', variable: 'MAVEN_SETTINGS')]) {
+          sh 'mvn -B -s ${MAVEN_SETTINGS} clean package -DskipTests'
+        }
+      }
     }
 
-    stage('Run App'){
-        runApp(CONTAINER_NAME, CONTAINER_TAG, DOCKER_HUB_USER, HTTP_PORT)
+    stage('Deploy Artifact') {
+      when {
+        environment name: 'DEPLOY_ARTIFACT', value: 'true'
+      }
+      agent {
+        docker {
+          image 'maven:3.5.4-jdk-8-alpine'
+          args '-v $HOME/.m2:/root/.m2'
+          reuseNode true
+        }
+      }
+      steps {
+        configFileProvider([configFile(fileId: 'maven-settings', variable: 'MAVEN_SETTINGS')]) {
+          sh 'mvn -B -s ${MAVEN_SETTINGS} deploy -DskipTests'
+        }
+      }
     }
 
-}
+  }
 
-def imagePrune(containerName){
-    try {
-        sh "docker image prune -f"
-        sh "docker stop $containerName"
-    } catch(error){}
-}
+  post {
+    success {
+      echo "Build ${env.JOB_NAME} #${env.BUILD_NUMBER} status : ${currentBuild.currentResult}.\n${env.BUILD_URL}"
+      // TODO send slack
+//        slackSend channel: '#jenkins',
+//            color: 'good',
+//            message: "Build ${env.JOB_NAME} ${env.BUILD_NUMBER} status : ${currentBuild.currentResult}.\n${env.BUILD_URL}",
+//            attachments: "",
+//            botUser: true
+    }
+    failure {
+      // TODO send mail / slack
+      echo "I have not failed. I've just found 10 000 ways that won't work. -Thomas Edison"
+      echo "Failure is unimportant. It takes courage to make a fool of yourself. -Charlie Chaplin"
+    }
+  }
 
-def imageBuild(containerName, tag){
-    sh "docker build -t $containerName:$tag  -t $containerName --pull --no-cache ."
-    echo "Image build complete"
-}
-
-def pushToImage(containerName, tag, dockerUser, dockerPassword){
-    sh "docker login -u $dockerUser -p $dockerPassword"
-    sh "docker tag $containerName:$tag $dockerUser/$containerName:$tag"
-    sh "docker push $dockerUser/$containerName:$tag"
-    echo "Image push complete"
-}
-
-def runApp(containerName, tag, dockerHubUser, httpPort){
-    sh "docker pull $dockerHubUser/$containerName"
-    sh "docker run -d --rm -p $httpPort:$httpPort --name $containerName $dockerHubUser/$containerName:$tag"
-    echo "Application started on port: ${httpPort} (http)"
 }
